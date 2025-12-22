@@ -52,8 +52,6 @@ class Wrapper_Hybrid_QML_Model(AbstractWrapper):
         n_qubits,
         State_Prep,
         flag_FT,
-        # flag_dft,
-        # flag_QFT,
         flag_NN,
         flag_NN_optuna=False,
         NN_units=None,
