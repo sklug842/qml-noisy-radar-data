@@ -55,7 +55,7 @@ class Wrapper_Hybrid_QML_Model(AbstractWrapper):
         flag_NN,
         flag_NN_optuna=False,
         NN_units=None,
-        n_layers=2, # number of layers is fixed in our setting
+        n_layers=2,
         noise="",
         db=-1,
         n_shots=10000,
