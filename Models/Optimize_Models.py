@@ -208,44 +208,28 @@ n_layers = 2     # number of QVC layers (fixed in the experiments)
 
 
 # ---------------------------------------------------------------------------
-# Estimate number of QVC evaluations per epoch (for reporting)
+# Number of QVC evaluations per optimization step
 # ---------------------------------------------------------------------------
 
 if flag_NN == 1:
-    # Purely classical model: QVC is not used, gradient cost is not relevant.
-    n_evals_per_epoch = -1
+    # Purely classical model: no QVC evaluation budget is required.
+    n_evals_per_step = -1
 
 else:
-    # Quantum model: estimate the number of circuit evaluations per epoch,
-    # assuming parameter-shift rule and explicit encoding derivatives.
-    if State_Prep == "Angle":
-        # Angle encoding: each qubit gets two angles (RZ, RY) per layer.
-        n_inputs          = 2 * n_qubits
-        # 2 evaluations per input parameter per layer.
-        n_evals_encoding  = 2 * n_inputs * n_layers
-
-    elif State_Prep == "Amplitude":
-        # Amplitude encoding: dimension is 2^n_qubits.
-        n_inputs          = 2 ** n_qubits
-        # Encoding only in first layer, hence no factor n_layers here.
-        n_evals_encoding  = 2 * n_inputs
-
-    # Parameter count per layer depends on the QVC template.
+    # Number of trainable QVC parameters P.
     if type_QVC == "V1":
-        # V1: simple layer with 2 parameters per qubit (e.g., RZ + RY).
-        n_params_per_layer = 2 * n_qubits
+        n_params = 2 * n_qubits * n_layers
 
     elif type_QVC == "V2":
-        # V2: more expressive template; the formula encodes
-        # (single-qubit rotations + entangling operations + final layer)
-        # as used in the implemented ansatz.
-        n_params_per_layer  = (
-            (n_qubits * 2 + (n_qubits ** 2 - n_qubits) + n_qubits * 2) * n_layers
+        n_params = (
+            (n_qubits * 2 + (n_qubits ** 2 - n_qubits) + n_qubits * 2)
+            * n_layers
             - n_qubits
         )
 
-    # 1 forward evaluation + 2 per parameter (parameter-shift) + encoding cost.
-    n_evals_per_epoch = 1 + 2 * n_params_per_layer * n_layers + n_evals_encoding
+    # One forward evaluation plus two parameter-shift evaluations
+    # for each trainable QVC parameter.
+    n_evals_per_step = 1 + 2 * n_params
 
 
 # ---------------------------------------------------------------------------
@@ -263,7 +247,7 @@ print(f"flag_FT:                {flag_FT          }")
 print(f"n_layers:               {n_layers         }")
 print(f"n_qubits:               {n_qubits         }")
 print(f"State_Prep:             {State_Prep       }")
-print(f"n_evals_per_epoch:      {n_evals_per_epoch}")
+print(f"n_evals_per_step:       {n_evals_per_step }")
 
 if optimizer == "Hashemi":
     print(f"sigma_init:             {sigma_init   }")
@@ -284,7 +268,8 @@ start      = datetime.now()
 n_epochs   = 20
 
 # accuracies has shape (n_epochs, n_runs)
-accuracies = np.zeros((n_epochs, n_runs))
+accuracies_val  = np.zeros((n_epochs, n_runs))
+accuracies_test = np.zeros((n_epochs, n_runs))
 
 for run in range(n_runs):
     # Instantiate a fresh wrapper (data + model builder) for each run to ensure
@@ -305,83 +290,74 @@ for run in range(n_runs):
 
     # Select optimizer and run training.
     if optimizer == "Hashemi":
-        accuracies[:, run] = Hashemi(
+        accuracies_val[:, run], accuracies_test[:, run] = Hashemi(
             wrapper           = myWrapper        ,
-            n_evals_per_epoch = n_evals_per_epoch,
+            n_evals_per_epoch = n_evals_per_step ,
             n_epochs          = n_epochs         ,
             sigma_init        = sigma_init       ,
             sigma_gs          = sigma_gs         ,
         ).run()
 
     elif optimizer == "Adam":
-        accuracies[:, run] = ADAM(
+        accuracies_val[:, run], accuracies_test[:, run] = ADAM(
             wrapper  = myWrapper,
             n_epochs = n_epochs ,
             eta      = eta      ,
         ).run()
 
-    print(f"accuracies run {run}: ", np.round(accuracies[:, run], 2))
+    print(f"accuracies run {run}: ", np.round(accuracies_val[:, run], 2),  np.round(accuracies_test[:, run], 2))
 
 
 # ---------------------------------------------------------------------------
 # Aggregate statistics across runs
 # ---------------------------------------------------------------------------
 
-accuracies_mean     = np.mean(accuracies, axis=1)
-accuracies_std      = np.std(accuracies, axis=1)
+accuracies_val_mean  = np.mean(accuracies_val, axis=1)
+accuracies_val_std   = np.std(accuracies_val, axis=1)
 
-# Adjusted accuracy: mean minus 3 standard deviations, used to select a
-# conservative "best" epoch across restarts.
-accuracies_adjusted = accuracies_mean - 3 * accuracies_std
-best_n_epoch        = np.argmax(accuracies_adjusted)
+accuracies_test_mean = np.mean(accuracies_test, axis=1)
+accuracies_test_std  = np.std(accuracies_test, axis=1)
 
-end                 = datetime.now()
+# Adjusted validation accuracy: mean minus 3 standard deviations.
+# The best epoch is selected exclusively from validation performance.
+accuracies_val_adjusted = accuracies_val_mean - 3 * accuracies_val_std
+best_n_epoch            = np.argmax(accuracies_val_adjusted)
+
+end = datetime.now()
 
 
+# ---------------------------------------------------------------------------
 # Per-epoch reporting
+# ---------------------------------------------------------------------------
+
 for i in range(n_epochs):
-    print("\n\nEpoch:             ", i + 1             )
-    print("Accuracy:          ", accuracies[         i])
-    print("Accuracy Mean:     ", accuracies_mean[    i])
-    print("Accuracy Std:      ", accuracies_std[     i])
-    print("Accuracy Adjusted: ", accuracies_adjusted[i])
+    print("\n\nEpoch:                    ", i + 1)
 
-# Summary for the best epoch under the adjusted metric
-print("\nBest Epoch:        ",                   best_n_epoch + 1)
-print("Accuracy:          ", accuracies[         best_n_epoch]   )
-print("Accuracy Mean:     ", accuracies_mean[    best_n_epoch]   )
-print("Accuracy Std:      ", accuracies_std[     best_n_epoch]   )
-print("Accuracy Adjusted: ", accuracies_adjusted[best_n_epoch]   )
+    print("\nValidation")
+    print("Accuracy:                  ", accuracies_val[i])
+    print("Accuracy Mean:             ", accuracies_val_mean[i])
+    print("Accuracy Std:              ", accuracies_val_std[i])
+    print("Accuracy Adjusted:         ", accuracies_val_adjusted[i])
+
+    print("\nTest")
+    print("Accuracy:                  ", accuracies_test[i])
+    print("Accuracy Mean:             ", accuracies_test_mean[i])
+    print("Accuracy Std:              ", accuracies_test_std[i])
 
 
 # ---------------------------------------------------------------------------
-# Final configuration and timing summary
+# Summary at validation-selected best epoch
 # ---------------------------------------------------------------------------
 
-print(" ")
-print("-----------------------------------------------")
-print(f"shape:                  {shape            }")
-print(f"noise:                  {noise            }")
-print(f"db:                     {db               }")
-print(f"Classical (flag_NN):    {flag_NN          }")
-print(f"Type of QVC:            {type_QVC         }")
-print(f"flag_FT:                {flag_FT          }")
-print(f"n_layers:               {n_layers         }")
-print(f"n_qubits:               {n_qubits         }")
-print(f"State_Prep:             {State_Prep       }")
-print(f"n_evals_per_epoch:      {n_evals_per_epoch}")
+print("\n\nBest Epoch (Validation):   ", best_n_epoch + 1)
 
-if optimizer == "Hashemi":
-    print(f"sigma_init:             {sigma_init   }")
-    print(f"sigma_gs:               {sigma_gs     }")
+print("\nValidation")
+print("Accuracy:                  ", accuracies_val[best_n_epoch])
+print("Accuracy Mean:             ", accuracies_val_mean[best_n_epoch])
+print("Accuracy Std:              ", accuracies_val_std[best_n_epoch])
+print("Accuracy Adjusted:         ", accuracies_val_adjusted[best_n_epoch])
 
-elif optimizer in ["Adam", "SGD"]:
-    print(f"eta:                    {eta          }")
-    print(f"n_epochs:               {n_epochs     }")
-
-print(f"# Runs per combination: {n_runs           }")
-print(f"Start:                  {start            }")
-print(f"End:                    {end              }")
-print(f"Duration:               {end - start      }")
-print("-----------------------------------------------")
-print(" ")
+print("\nTest")
+print("Accuracy:                  ", accuracies_test[best_n_epoch])
+print("Accuracy Mean:             ", accuracies_test_mean[best_n_epoch])
+print("Accuracy Std:              ", accuracies_test_std[best_n_epoch])
