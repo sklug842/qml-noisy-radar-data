@@ -82,8 +82,8 @@ def agent_train(eta, NN_units, n_epochs, shape, noise, db, q=None):
 
     Returns
     -------
-    np.ndarray
-        Accuracy per epoch (shape: (n_epochs,)), as returned by ADAM.run().
+    tuple[np.ndarray, np.ndarray]
+        Validation and test accuracies per epoch, each with shape (n_epochs,).
     """
 
     # Fixed data and architecture settings for this tuning script.
@@ -159,50 +159,91 @@ def objective(trial, NUM_RUNS, n_epochs, shape, noise, db):
         )
         NN_units.append(int(units_n))
 
-    # accuracies has shape (n_epochs, NUM_RUNS)
-    accuracies = np.zeros((n_epochs, NUM_RUNS))
 
-    # Multiple independent runs per architecture to average out randomness.
+    # Validation and test accuracies have shape (n_epochs, NUM_RUNS)
+    accuracies_val  = np.zeros((n_epochs, NUM_RUNS))
+    accuracies_test = np.zeros((n_epochs, NUM_RUNS))
+    
+    # Multiple independent runs per architecture
     for run in range(NUM_RUNS):
-        accuracies[:, run] = agent_train(
-            eta      = eta     ,
+    
+        accuracies_val[:, run], accuracies_test[:, run] = agent_train(
+            eta      = eta,
             NN_units = NN_units,
             n_epochs = n_epochs,
-            shape    = shape   ,
-            noise    = noise   ,
-            db       = db      ,
+            shape    = shape,
+            noise    = noise,
+            db       = db,
         )
-
-    # Aggregate statistics across runs for each epoch.
-    accuracies_mean     = np.mean(accuracies, axis=1)
-    accuracies_std      = np.std( accuracies, axis=1)
-
-    # Conservative accuracy metric for epoch selection.
-    accuracies_adjusted = accuracies_mean - 3 * accuracies_std
-    best_n_epoch        = np.argmax(accuracies_adjusted)
-
-    # Store diagnostic information for later analysis.
-    trial.set_user_attr("Best_epoch_values", str(accuracies[best_n_epoch]))
-    trial.set_user_attr("Best Epoch"       , int(best_n_epoch) + 1        )
-
-    trial.set_user_attr("accuracies_mean"  , accuracies_mean[best_n_epoch])
-    trial.set_user_attr("accuracies_std"   , accuracies_std[ best_n_epoch])
-    trial.set_user_attr(
-        "accuracies_adjusted", accuracies_adjusted[best_n_epoch]
+    
+    
+    # Aggregate validation statistics across runs for each epoch
+    accuracies_val_mean = np.mean(accuracies_val, axis=1)
+    accuracies_val_std  = np.std(accuracies_val, axis=1)
+    
+    # Aggregate test statistics across runs for each epoch
+    accuracies_test_mean = np.mean(accuracies_test, axis=1)
+    accuracies_test_std  = np.std(accuracies_test, axis=1)
+    
+    
+    # Conservative validation metric for epoch selection
+    accuracies_val_adjusted = (
+        accuracies_val_mean - 3 * accuracies_val_std
     )
-
-    trial.set_user_attr("nn_units", str(NN_units))
-
-    # Print summary for this trial.
-    print("\nBestEpoch:         ",                   best_n_epoch + 1)
-    print("Accuracy:          ", accuracies[         best_n_epoch])
-    print("Accuracy Mean:     ", accuracies_mean[    best_n_epoch])
-    print("Accuracy Std:      ", accuracies_std[     best_n_epoch])
-    print("Accuracy Adjusted: ", accuracies_adjusted[best_n_epoch])
-
-    # Optuna maximizes this value.
-    return np.max(accuracies_adjusted)
-
+    
+    # Select best epoch exclusively from validation performance
+    best_n_epoch = np.argmax(accuracies_val_adjusted)
+    
+    
+    # Store validation-based diagnostic information for Optuna
+    trial.set_user_attr(
+        "Best_epoch_values",
+        str(accuracies_val[best_n_epoch])
+    )
+    
+    trial.set_user_attr(
+        "Best Epoch",
+        int(best_n_epoch) + 1
+    )
+    
+    trial.set_user_attr(
+        "accuracies_mean",
+        accuracies_val_mean[best_n_epoch]
+    )
+    
+    trial.set_user_attr(
+        "accuracies_std",
+        accuracies_val_std[best_n_epoch]
+    )
+    
+    trial.set_user_attr(
+        "accuracies_adjusted",
+        accuracies_val_adjusted[best_n_epoch]
+    )
+    
+    trial.set_user_attr(
+        "nn_units",
+        str(NN_units)
+    )
+    
+    
+    # Print summary for this trial
+    print("\nBest Epoch (Validation):", best_n_epoch + 1)
+    
+    print("\nValidation")
+    print("Accuracy:          ", accuracies_val[best_n_epoch])
+    print("Accuracy Mean:     ", accuracies_val_mean[best_n_epoch])
+    print("Accuracy Std:      ", accuracies_val_std[best_n_epoch])
+    print("Accuracy Adjusted: ", accuracies_val_adjusted[best_n_epoch])
+    
+    print("\nTest")
+    print("Accuracy:          ", accuracies_test[best_n_epoch])
+    print("Accuracy Mean:     ", accuracies_test_mean[best_n_epoch])
+    print("Accuracy Std:      ", accuracies_test_std[best_n_epoch])
+    
+    
+    # Optuna maximizes validation performance only
+    return np.max(accuracies_val_adjusted)
 
 # ---------------------------------------------------------------------------
 # Main: create study, run optimization, and log summary
