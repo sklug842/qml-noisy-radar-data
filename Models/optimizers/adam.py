@@ -10,10 +10,10 @@ class ADAM(AbstractOptimizer_GB):
     """Gradient-based optimization of a hybrid QML model using Adam.
 
     This optimizer:
-      * builds the hybrid quantum–classical model from `wrapper.get_model()`,
+      * builds the hybrid quantum-classical model from `wrapper.get_model()`,
       * trains it with standard mini-batch Adam on training data,
-      * records test accuracy after each epoch via the wrapper's evaluation
-        routine (which expects a flattened parameter vector, "individual").
+      * records validation and test accuracy after each epoch via the wrapper's
+        evaluation routine.
     """
 
     def __init__(self, wrapper, n_epochs, eta) -> None:
@@ -35,10 +35,12 @@ class ADAM(AbstractOptimizer_GB):
         self.n_epochs = n_epochs
 
     def run(self):
-        """Run Adam training and return test accuracy after each epoch.
+        """Run Adam training and return validation and test accuracy after each epoch.
 
         Returns:
-            List of accuracies on the test set, one value per epoch.
+            Tuple containing:
+            - validation accuracies, one value per epoch,
+            - test accuracies, one value per epoch.
         """
         # Build and compile the hybrid model (quantum or classical)
         model = self.wrapper.get_model()
@@ -69,8 +71,9 @@ class ADAM(AbstractOptimizer_GB):
             # Parameter update via Adam
             optimizer.apply_gradients(zip(grads, model.trainable_weights))
 
-        # Store test accuracy after each epoch
-        accuracies = []
+        # Store validation and test accuracy after each epoch
+        accuracies_val  = []
+        accuracies_test = []
 
         # Epoch loop
         pbar = tqdm(range(1, self.n_epochs + 1))
@@ -92,12 +95,20 @@ class ADAM(AbstractOptimizer_GB):
             # since evaluate_single_final expects this representation.
             individual = self.wrapper.get_individual(model.weights)
 
+            # Evaluate on validation set and store accuracy
+            acc_val = self.wrapper.evaluate_single_final(
+                X_data     = self.wrapper.X_val,
+                y_labels   = self.wrapper.y_val,
+                individual = individual,
+            )[1]
+            accuracies_val.append(acc_val)
+
             # Evaluate on test set and store accuracy
-            acc = self.wrapper.evaluate_single_final(
+            acc_test = self.wrapper.evaluate_single_final(
                 X_data     = self.wrapper.X_test,
                 y_labels   = self.wrapper.y_test,
                 individual = individual,
             )[1]
-            accuracies.append(acc)
+            accuracies_test.append(acc_test)
 
-        return accuracies
+        return accuracies_val, accuracies_test
