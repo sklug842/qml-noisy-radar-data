@@ -152,22 +152,22 @@ db         = np.int64(  sys.argv[12])
 # 3-qubit models (6-bin scenario, shape = 6)
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # V1, Angle encoding, DFT:
-#   python3 Optimize_Models.py 6 "V1" 3 "Angle"     "DFT" 0 optimizer sigma_init sigma_gs eta dataset noise gpu
+#   python3 Optimize_Models.py 6 "V1" 3 "Angle"     "DFT" 0 optimizer sigma_init sigma_gs eta noise db GPU
 #
 # V2, Angle encoding, DFT:
-#   python3 Optimize_Models.py 6 "V2" 3 "Angle"     "DFT" 0 optimizer sigma_init sigma_gs eta dataset noise gpu
+#   python3 Optimize_Models.py 6 "V2" 3 "Angle"     "DFT" 0 optimizer sigma_init sigma_gs eta noise db GPU
 #
 # V1, Amplitude encoding, DFT:
-#   python3 Optimize_Models.py 6 "V1" 3 "Amplitude" "DFT" 0 optimizer sigma_init sigma_gs eta dataset noise gpu
+#   python3 Optimize_Models.py 6 "V1" 3 "Amplitude" "DFT" 0 optimizer sigma_init sigma_gs eta noise db GPU
 #
 # V2, Amplitude encoding, DFT:
-#   python3 Optimize_Models.py 6 "V2" 3 "Amplitude" "DFT" 0 optimizer sigma_init sigma_gs eta dataset noise gpu
+#   python3 Optimize_Models.py 6 "V2" 3 "Amplitude" "DFT" 0 optimizer sigma_init sigma_gs eta noise db GPU
 #
 # V1, Amplitude encoding, QFT:
-#   python3 Optimize_Models.py 6 "V1" 3 "Amplitude" "QFT" 0 optimizer sigma_init sigma_gs eta dataset noise gpu
+#   python3 Optimize_Models.py 6 "V1" 3 "Amplitude" "QFT" 0 optimizer sigma_init sigma_gs eta noise db GPU
 #
 # V2, Amplitude encoding, QFT:
-#   python3 Optimize_Models.py 6 "V2" 3 "Amplitude" "QFT" 0 optimizer sigma_init sigma_gs eta dataset noise gpu
+#   python3 Optimize_Models.py 6 "V2" 3 "Amplitude" "QFT" 0 optimizer sigma_init sigma_gs eta noise db GPU
 #
 # Example (noiseless, no GPU, Adam):
 #   python3 Optimize_Models.py 6 "V1" 3 "Angle" "DFT" 0 "Adam" 0 0 0.001 "" -1 -1
@@ -176,23 +176,23 @@ db         = np.int64(  sys.argv[12])
 # 4-qubit models (10-bin scenario, shape = 10)
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # V1, Amplitude encoding, DFT:
-#   python3 Optimize_Models.py 10 "V1" 4 "Amplitude" "DFT" 0 optimizer sigma_init sigma_gs eta dataset noise gpu
+#   python3 Optimize_Models.py 10 "V1" 4 "Amplitude" "DFT" 0 optimizer sigma_init sigma_gs eta noise db GPU
 # ...
 #
 # 5-qubit models (10-bin scenario, shape = 10)
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # V1, Angle encoding, DFT:
-#   python3 Optimize_Models.py 10 "V1" 5 "Angle"     "DFT" 0 optimizer sigma_init sigma_gs eta dataset noise gpu
+#   python3 Optimize_Models.py 10 "V1" 5 "Angle"     "DFT" 0 optimizer sigma_init sigma_gs eta noise db GPU
 # ...
 #
 #
 # Classical baselines matched to QML models
 # -----------------------------------------
 # NN matched to 3-qubit QML (6-bin):
-#   python3 Optimize_Models.py 6  "" 3 "" "DFT" 1 "Adam" 0 0 eta dataset noise gpu
+#   python3 Optimize_Models.py 6  "" 3 "" "DFT" 1 "Adam" 0 0 eta noise db GPU
 #
 # NN matched to 5-qubit QML (10-bin):
-#   python3 Optimize_Models.py 10 "" 5 "" "DFT" 1 "Adam" 0 0 eta dataset noise gpu
+#   python3 Optimize_Models.py 10 "" 5 "" "DFT" 1 "Adam" 0 0 eta noise db GPU
 #
 # Example (AWGN, GPU 0):
 #   python3 Optimize_Models.py 6 "" 3 "" "DFT" 1 "Adam" 0 0 0.01 "awgn" 2 0
