@@ -11,16 +11,17 @@ Code accompanying the manuscript:
 This repository contains code used to reproduce the experiments reported in the manuscript, including:
 
 - Simulation of radar micro-Doppler data for two multirotor UAVs in the X-band using the Martin–Mulgrew signal model.
+- Generation of independent training, validation, and test sets, with model and hyperparameter selection performed exclusively on validation data.
 - Generation of three data regimes: noiseless, additive white Gaussian noise (AWGN), and colored AR(1) complex Gaussian noise (cAR(1)–GN).
-- Implementations of variational quantum classifiers (VQCs) with  
+- Implementations of quantum variational classifiers (QVCs) with  
   - two circuit families (Version 1 and Version 2),  
   - angle and amplitude encodings, and  
-  - optional Quantum Fourier Transform (QFT) layers,  
+  - classical Discrete Fourier Transform (DFT) or Quantum Fourier Transform (QFT) processing,  
   trained with both gradient-based (Adam) and gradient-free (Asexual Reproduction Optimization, ARO) optimizers.
 - Classical feed-forward neural networks, including  
   - structure-matched baselines mirroring QVC depth and width, and  
   - tuned architectures obtained via Optuna-based hyperparameter search.
-- Experiment scripts to train all models, run 10 independent restarts per configuration, and aggregate metrics (accuracy, adjusted mean accuracy, and Mann–Whitney U tests).
+- Experiment scripts to train and evaluate the models over 10 independent runs per configuration and aggregate performance statistics.
 
 ## Citation
 
