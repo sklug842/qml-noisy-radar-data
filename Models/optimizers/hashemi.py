@@ -13,7 +13,7 @@ class Hashemi(AbstractOptimizer_GF):
          where g is the segment length.
       3. Accepts the mutated "larva" if it yields a lower training BCE.
 
-    Test accuracy is recorded after each epoch (n_evals_per_epoch iterations).
+    Validation and test accuracy are recorded after each epoch (n_evals_per_epoch iterations).
     """
 
     def __init__(self, wrapper, n_evals_per_epoch, n_epochs, sigma_init, sigma_gs) -> None:
@@ -44,8 +44,9 @@ class Hashemi(AbstractOptimizer_GF):
         """Run the Hashemi optimizer.
 
         Returns:
-            List of test accuracies, one entry per epoch
-            (i.e., after every `n_evals_per_epoch` iterations).
+            Tuple containing:
+            - validation accuracies, one entry per epoch,
+            - test accuracies, one entry per epoch.
         """
 
         # ------------------------------------------------------------------
@@ -62,8 +63,9 @@ class Hashemi(AbstractOptimizer_GF):
             individual = individual,
         )[0]
 
-        # Store test-set accuracy after each epoch
-        accuracies = []
+        # Store validation and test accuracy after each epoch
+        accuracies_val  = []
+        accuracies_test = []
 
         # ------------------------------------------------------------------
         # 2. Main mutation–selection loop
@@ -132,14 +134,22 @@ class Hashemi(AbstractOptimizer_GF):
                 fit_individual = np.copy(fit_larva)
 
             # ------------------------------------------------------------------
-            # 2c. At the end of each epoch, record test-set accuracy
+            # 2c. At the end of each epoch, record validation and test accuracy
             # ------------------------------------------------------------------
             if generation % self.n_evals_per_epoch == 0:
-                acc = self.wrapper.evaluate_single_final(
+
+                acc_val = self.wrapper.evaluate_single_final(
+                    X_data     = self.wrapper.X_val,
+                    y_labels   = self.wrapper.y_val,
+                    individual = individual,
+                )[1]
+                accuracies_val.append(acc_val)
+                
+                acc_test = self.wrapper.evaluate_single_final(
                     X_data     = self.wrapper.X_test,
                     y_labels   = self.wrapper.y_test,
                     individual = individual,
                 )[1]
-                accuracies.append(acc)
+                accuracies_test.append(acc_test)
 
-        return accuracies
+        return accuracies_val, accuracies_test
