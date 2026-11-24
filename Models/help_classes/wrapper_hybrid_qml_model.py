@@ -40,8 +40,8 @@ class Wrapper_Hybrid_QML_Model(AbstractWrapper):
           - evaluating BCE and accuracy.
 
     The main entry points used in experiments are:
-      * `get_model()` – builds and compiles the Keras model.
-      * `evaluate_single_final()` – evaluates a given individual on a dataset.
+      * `get_model()` - builds and compiles the Keras model.
+      * `evaluate_single_final()` - evaluates a given individual on a dataset.
     """
 
     def __init__(
@@ -93,16 +93,17 @@ class Wrapper_Hybrid_QML_Model(AbstractWrapper):
         self.flag_draw      = flag_draw
 
         # Load data immediately
-        self.X_train, self.y_train, self.X_test, self.y_test = self.get_data()
+        self.X_train, self.y_train, self.X_val, self.y_val, self.X_test, self.y_test = self.get_data()
 
         # Check if a GPU is available for PennyLane's lightning.gpu backend
         self.flag_GPU        = len(tf.config.list_physical_devices("GPU")) == 1
 
     def get_data(self):
-        """Load and preprocess training and test data.
+        """Load and preprocess training, validation, and test data.
 
         Returns:
-            (train_data, train_labels, test_data, test_labels) where:
+            (train_data, train_labels, val_data, val_labels,
+             test_data, test_labels) where:
               * data arrays have shape (n_samples, shape),
               * labels are flattened binary labels.
 
@@ -119,6 +120,9 @@ class Wrapper_Hybrid_QML_Model(AbstractWrapper):
             train_data = np.load(
                 f"../Data/Data/X_Train_900_pooled_mean_{self.shape}_OffsetFalse.npy"
             )
+            val_data = np.load(
+                f"../Data/Data/X_Validation_900_pooled_mean_{self.shape}_OffsetFalse.npy"
+            )
             test_data = np.load(
                 f"../Data/Data/X_Test_900_pooled_mean_{self.shape}_OffsetFalse.npy"
             )
@@ -127,12 +131,18 @@ class Wrapper_Hybrid_QML_Model(AbstractWrapper):
             train_data = np.load(
                 f"../Data/Data/X_Train_900_pooled_mean_{self.shape}_OffsetFalse{suffix}.npy"
             )
+            val_data = np.load(
+                f"../Data/Data/X_Validation_900_pooled_mean_{self.shape}_OffsetFalse{suffix}.npy"
+            )
             test_data = np.load(
                 f"../Data/Data/X_Test_900_pooled_mean_{self.shape}_OffsetFalse{suffix}.npy"
             )
 
         train_labels = np.load(
             f"../Data/Data/y_Train_900_OffsetFalse.npy"
+        ).flatten()
+        val_labels = np.load(
+            f"../Data/Data/y_Validation_900_OffsetFalse.npy"
         ).flatten()
         test_labels = np.load(
             f"../Data/Data/y_Test_900_OffsetFalse.npy"
@@ -141,10 +151,12 @@ class Wrapper_Hybrid_QML_Model(AbstractWrapper):
         # Optional FFT on complex data for Angle encoding
         if self.flag_FT == "DFT" and self.State_Prep == "Angle":
             train_data = np.fft.fft(train_data)
+            val_data   = np.fft.fft(val_data)
             test_data  = np.fft.fft(test_data)
 
         # Use magnitude of complex radar returns
         train_data = np.abs(train_data)
+        val_data   = np.abs(val_data)
         test_data  = np.abs(test_data)
 
         # For Mottonen amplitude encoding, normalize each sample to unit norm
@@ -152,11 +164,14 @@ class Wrapper_Hybrid_QML_Model(AbstractWrapper):
             train_data = train_data / np.linalg.norm(
                 x=train_data, axis=1, keepdims=True
             )
+            val_data = val_data / np.linalg.norm(
+                x=val_data, axis=1, keepdims=True
+            )
             test_data = test_data / np.linalg.norm(
                 x=test_data, axis=1, keepdims=True
             )
 
-        return train_data, train_labels, test_data, test_labels
+        return train_data, train_labels, val_data, val_labels, test_data, test_labels
 
 
 
